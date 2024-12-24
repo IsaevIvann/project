@@ -1,0 +1,28 @@
+version: '3'
+
+services:
+  postgres:
+    image: postgres
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  django:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    command: python3 manage.py runserver 0.0.0.0:8081
+    ports:
+      - "8081:8081"
+    volumes:
+      - .:/app
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:
