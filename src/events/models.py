@@ -1,6 +1,6 @@
 #
 # from django.db import models
-# from users.models import User
+# from src.users.models import User
 #
 # class MootCourt(models.Model):
 #     created_at = models.DateTimeField(
