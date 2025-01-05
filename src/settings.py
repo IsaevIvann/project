@@ -39,7 +39,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'src.users',
     'src.technical',
-    'src.events'
+    'src.events',
+    'rest_framework'
+    ,
 
 ]
 
@@ -80,7 +82,7 @@ WSGI_APPLICATION = 'src.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'postgres',
+        'NAME': 'postgres1',
         'USER': 'postgres',
         'PASSWORD': 'postgres',
         'HOST': 'localhost',

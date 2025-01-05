@@ -107,5 +107,7 @@ class Documents(models.Model):
         return f"{self.file_name} ({self.type})"
 
     class Meta:
-        verbose_name = "Документ"
-        verbose_name_plural = "Документы"
+        verbose_name = "Событие"
+        verbose_name_plural = "События"
+
+
