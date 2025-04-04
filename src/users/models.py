@@ -86,13 +86,13 @@ class User(AbstractUser):
     change_status_button.short_description = 'Изменить статус'
     change_status_button.allow_tags = True
 
-    def get_urls(self):
-        urls = super().get_urls()
-        custom_urls = [
-            path('<int:user_id>/activate/', self.admin_site.admin_view(self.activate_user), name='activate_user'),
-            path('<int:user_id>/deactivate/', self.admin_site.admin_view(self.deactivate_user), name='deactivate_user'),
-        ]
-        return custom_urls + urls
+    # def get_urls(self):
+    #     urls = super().get_urls()
+    #     custom_urls = [
+    #         path('<int:user_id>/activate/', self.admin_site.admin_view(self.activate_user), name='activate_user'),
+    #         path('<int:user_id>/deactivate/', self.admin_site.admin_view(self.deactivate_user), name='deactivate_user'),
+    #     ]
+    #     return custom_urls + urls
 
     def activate_user(self, request, user_id):
         User.objects.filter(pk=user_id).update(status='active')
@@ -187,4 +187,53 @@ class Team(models.Model):
         verbose_name_plural = "Команды"
 
 
+#
+# from django.db import models
+# from django.contrib.auth import get_user_model
+#
+# User = get_user_model()
+#
+# class Organization(models.Model):
+#     name = models.CharField(
+#         max_length=255,
+#         unique=True,
+#         verbose_name="Название организации"
 
+    organization_name = models.CharField(
+        max_length=255,
+        verbose_name="Название ВУЗа/организации"
+    )
+#     phone_number = models.CharField(
+#         max_length=20,
+#         blank=True,
+#         null=True,
+#         verbose_name="Телефон"
+#     )
+#     email = models.EmailField(
+#         unique=True,
+#         verbose_name="Email"
+#     )
+    is_verified = models.BooleanField(
+        default=False,
+        verbose_name="Верифицированный пользователь"
+    )
+#     status = models.CharField(
+#         max_length=50,
+#         choices=(
+#             ('active', 'Активный'),
+#             ('inactive', 'Неактивный'),
+#         ),
+#         default='inactive',
+#         verbose_name="Статус"
+#     )
+#     date_joined = models.DateTimeField(
+#         auto_now_add=True,
+#         verbose_name="Дата создания"
+#     )
+#
+#     def __str__(self):
+#         return self.name
+#
+#     class Meta:
+#         verbose_name = "Организация"
+#         verbose_name_plural = "Организации"

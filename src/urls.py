@@ -1,13 +1,7 @@
 from django.contrib import admin
-from django.urls import path
-
-# from src.users.views import UserApiView
+from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    # path('api/v1/userlist/', UserApiView.as_view()),
-
+    path('', include('src.users.urls')),
 ]
-
-admin.site.site_header = "Одмэнка"
-admin.site.index_title = "Одmanка"
