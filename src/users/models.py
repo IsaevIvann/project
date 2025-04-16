@@ -2,43 +2,37 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.shortcuts import redirect
 from django.utils.html import format_html
+from django.conf import settings
 
 
 class User(AbstractUser):
     phone_number = models.CharField(
         max_length=15,
         blank=True,
-        null=True,
         verbose_name="Телефон"
     )
     photo = models.ImageField(
         upload_to='photos/',
         blank=True,
-        null=True,
         verbose_name="Фотография"
     )
     post = models.CharField(
-        max_length=20,
+        max_length=50,
         blank=True,
-        null=True,
         verbose_name="Должность"
     )
-    description = models.CharField(
+    description = models.TextField(
         max_length=2000,
         blank=True,
-        null=True,
-        verbose_name="Должность"
+        verbose_name="Описание"
     )
     vuz_name = models.CharField(
-        max_length=15,
-        blank=False,
-        null=True,
+        max_length=255,
         verbose_name="Название ВУЗа/организации"
     )
     organization_link = models.URLField(
         max_length=500,
         blank=True,
-        null=True,
         verbose_name="Ссылка на ВУЗ/организацию"
     )
     accept_invite = models.BooleanField(
@@ -53,16 +47,34 @@ class User(AbstractUser):
         default=0.0,
         verbose_name="Рейтинг"
     )
+
+    STATUS_ACTIVE = 'active'
+    STATUS_INACTIVE = 'inactive'
     STATUS_CHOICES = [
-        ('active', 'Активный'),
-        ('inactive', 'Неактивный'),
+        (STATUS_ACTIVE, 'Активный'),
+        (STATUS_INACTIVE, 'Неактивный'),
     ]
 
     status = models.CharField(
         max_length=10,
         choices=STATUS_CHOICES,
-        default='active',
+        default=STATUS_ACTIVE,
         verbose_name="Статус"
+    )
+
+    ROLE_CHOICES = [
+        ('participant', 'Участник'),
+        ('trainer', 'Тренер'),
+        ('arbiter', 'Арбитр'),
+        ('organization', 'ВУЗ/Организация'),
+        ('admin', 'Администратор'),
+    ]
+
+    role = models.CharField(
+        max_length=20,
+        choices=ROLE_CHOICES,
+        default='participant',
+        verbose_name='Роль пользователя'
     )
 
     def __str__(self):
@@ -73,47 +85,33 @@ class User(AbstractUser):
         verbose_name_plural = "Пользователи"
 
     def change_status_button(self, obj):
-        if obj.status == 'active':
+        if obj.status == self.STATUS_ACTIVE:
             return format_html(
                 '<a class="button" href="{}">Деактивировать</a>',
                 f'../{obj.id}/deactivate/'
             )
-        else:
-            return format_html(
-                '<a class="button" href="{}">Активировать</a>',
-                f'../{obj.id}/activate/'
-            )
+        return format_html(
+            '<a class="button" href="{}">Активировать</a>',
+            f'../{obj.id}/activate/'
+        )
+
     change_status_button.short_description = 'Изменить статус'
     change_status_button.allow_tags = True
 
-    # def get_urls(self):
-    #     urls = super().get_urls()
-    #     custom_urls = [
-    #         path('<int:user_id>/activate/', self.admin_site.admin_view(self.activate_user), name='activate_user'),
-    #         path('<int:user_id>/deactivate/', self.admin_site.admin_view(self.deactivate_user), name='deactivate_user'),
-    #     ]
-    #     return custom_urls + urls
-
     def activate_user(self, request, user_id):
-        User.objects.filter(pk=user_id).update(status='active')
+        User.objects.filter(pk=user_id).update(status=self.STATUS_ACTIVE)
         self.message_user(request, 'Пользователь активирован.')
         return redirect('..')
 
     def deactivate_user(self, request, user_id):
-        User.objects.filter(pk=user_id).update(status='inactive')
+        User.objects.filter(pk=user_id).update(status=self.STATUS_INACTIVE)
         self.message_user(request, 'Пользователь деактивирован.')
         return redirect('..')
 
 
 class Team(models.Model):
-    # date_created = models.DateTimeField(
-    #     auto_now_add=True,
-    #     verbose_name="Дата создания"
-    # )
-    date_field = models.CharField(
-        max_length=15,
-        blank=False,
-        null=True,
+    created_at = models.DateTimeField(
+        auto_now_add=True,
         verbose_name="Дата создания"
     )
     name = models.CharField(
@@ -123,19 +121,13 @@ class Team(models.Model):
     )
     description = models.TextField(
         blank=True,
-        null=True,
         verbose_name="Описание"
     )
-    logo = models.ImageField(
-        upload_to="team_logos/",
-        blank=True,
-        null=True,
-        verbose_name="Логотип"
-    )
+
     organization = models.CharField(
         max_length=255,
-        blank=True,
-        null=True,
+        blank=False,
+        default='-',
         verbose_name="ВУЗ/организация"
     )
     is_verified = models.BooleanField(
@@ -175,8 +167,9 @@ class Team(models.Model):
         verbose_name="Рейтинг"
     )
     status = models.CharField(
-        max_length=100, blank=True,
-        null=True, verbose_name="Статус"
+        max_length=100,
+        blank=True,
+        verbose_name="Статус"
     )
 
     def __str__(self):
@@ -187,53 +180,15 @@ class Team(models.Model):
         verbose_name_plural = "Команды"
 
 
-#
-# from django.db import models
-# from django.contrib.auth import get_user_model
-#
-# User = get_user_model()
-#
-# class Organization(models.Model):
-#     name = models.CharField(
-#         max_length=255,
-#         unique=True,
-#         verbose_name="Название организации"
 
-    organization_name = models.CharField(
-        max_length=255,
-        verbose_name="Название ВУЗа/организации"
+class UserPhoto(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='photos'
     )
-#     phone_number = models.CharField(
-#         max_length=20,
-#         blank=True,
-#         null=True,
-#         verbose_name="Телефон"
-#     )
-#     email = models.EmailField(
-#         unique=True,
-#         verbose_name="Email"
-#     )
-    is_verified = models.BooleanField(
-        default=False,
-        verbose_name="Верифицированный пользователь"
-    )
-#     status = models.CharField(
-#         max_length=50,
-#         choices=(
-#             ('active', 'Активный'),
-#             ('inactive', 'Неактивный'),
-#         ),
-#         default='inactive',
-#         verbose_name="Статус"
-#     )
-#     date_joined = models.DateTimeField(
-#         auto_now_add=True,
-#         verbose_name="Дата создания"
-#     )
-#
-#     def __str__(self):
-#         return self.name
-#
-#     class Meta:
-#         verbose_name = "Организация"
-#         verbose_name_plural = "Организации"
+    image = models.ImageField(upload_to='user_photos/')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Фото пользователя {self.user.username}"

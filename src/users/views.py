@@ -1,17 +1,35 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.decorators import permission_classes
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from drf_spectacular.utils import extend_schema, OpenApiResponse
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
+from rest_framework_simplejwt.views import TokenRefreshView
 
-from .serializers import RegisterSerializer, LoginSerializer, UserProfileSerializer
+from .serializers import (
+    RegisterSerializer,
+    LoginSerializer,
+    UserProfileSerializer,
+    UploadUserPhotoSerializer,
+    UploadUserPhotosSerializer
+)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
+@extend_schema(
+    request=RegisterSerializer,
+    responses={201: OpenApiResponse(description="Пользователь успешно зарегистрирован. Возвращаются JWT токены.")},
+    tags=['Auth'],
+    summary="Регистрация пользователя с фото"
+)
 class RegisterView(APIView):
+    parser_classes = [MultiPartParser, FormParser]
+    permission_classes = [AllowAny]
+
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
@@ -22,7 +40,15 @@ class RegisterView(APIView):
 
 
 @method_decorator(csrf_exempt, name='dispatch')
+@extend_schema(
+    request=LoginSerializer,
+    responses={200: OpenApiResponse(description="JWT токены при успешной авторизации")},
+    tags=['Auth'],
+    summary="Авторизация пользователя"
+)
 class LoginView(APIView):
+    permission_classes = [AllowAny]
+
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():
@@ -30,50 +56,99 @@ class LoginView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@permission_classes([IsAuthenticated])
+@extend_schema(
+    responses={200: UserProfileSerializer},
+    tags=['User'],
+    summary="Получить профиль текущего пользователя"
+)
 class GetProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
-        user = request.user
-        data = {
-            'id': user.id,
-            'username': user.username,
-            'email': user.email,
-            'first_name': user.first_name,
-            'last_name': user.last_name,
-            'phone_number': user.phone_number,
-            'post': user.post,
-            'description': user.description,
-            'vuz_name': user.vuz_name,
-            'organization_link': user.organization_link,
-            'photo': request.build_absolute_uri(user.photo.url) if user.photo else None,
-            'rating': user.rating,
-            'status': user.status,
-        }
-        return Response(data, status=status.HTTP_200_OK)
+        serializer = UserProfileSerializer(request.user, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-@permission_classes([IsAuthenticated])
+@extend_schema(
+    request=UserProfileSerializer,
+    responses={200: UserProfileSerializer},
+    tags=['User'],
+    summary="Обновить профиль пользователя"
+)
 class UpdateProfileView(APIView):
     parser_classes = [MultiPartParser, FormParser]
+    permission_classes = [IsAuthenticated]
 
     def patch(self, request):
-        user = request.user
-        for field, value in request.data.items():
-            if hasattr(user, field):
-                setattr(user, field, value)
-        if 'photo' in request.FILES:
-            user.photo = request.FILES['photo']
-        user.save()
-        return Response({
-            'message': 'Профиль обновлён успешно',
-            'first_name': user.first_name,
-            'last_name': user.last_name,
-            'photo': request.build_absolute_uri(user.photo.url) if user.photo else None,
-        }, status=status.HTTP_200_OK)
+        serializer = UserProfileSerializer(
+            request.user,
+            data=request.data,
+            context={'request': request},
+            partial=True
+        )
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@permission_classes([IsAuthenticated])
+@extend_schema(
+    responses={204: OpenApiResponse(description="Профиль успешно удалён")},
+    tags=['User'],
+    summary="Удалить пользователя"
+)
 class DeleteProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def delete(self, request):
         request.user.delete()
         return Response({'message': 'Пользователь успешно удалён'}, status=status.HTTP_204_NO_CONTENT)
+
+
+@extend_schema(
+    request=UploadUserPhotoSerializer,
+    responses={201: UploadUserPhotoSerializer},
+    tags=['User'],
+    summary="Загрузить фото пользователя"
+)
+class UploadUserPhotoView(APIView):
+    parser_classes = [MultiPartParser, FormParser]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = UploadUserPhotoSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            photo = serializer.save()
+            return Response({
+                'message': 'Фото загружено',
+                'data': UploadUserPhotoSerializer(photo, context={'request': request}).data
+            }, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema(
+    request=UploadUserPhotosSerializer,
+    responses={201: OpenApiResponse(description="Фотографии успешно загружены")},
+    tags=['User'],
+    summary="Загрузить несколько фото пользователя"
+)
+class UploadUserPhotosView(APIView):
+    parser_classes = [MultiPartParser, FormParser]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = UploadUserPhotosSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Фотографии успешно загружены"}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema(
+    tags=['Auth'],
+    summary='Обновление токена',
+    request=TokenRefreshSerializer,
+    responses={200: TokenRefreshSerializer},
+)
+class CustomTokenRefreshView(TokenRefreshView):
+    pass

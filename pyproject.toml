@@ -12,6 +12,8 @@ psycopg2-binary = "^2.9.10"
 django-theherk-events = "^1.8.1"
 now = "^0.0.6"
 django-email-users = "^2.0.0"
+drf-spectacular = "^0.28.0"
+router = "^0.1"
 
 
 [build-system]
